@@ -40,6 +40,19 @@ class RouletteWheel {
         // 用於存儲 setTimeout 的 ID
         this.resultTimeoutId = null;
         
+        // x_gun 圖片相關
+        this.xGunImage = new Image();
+        this.xGunImage.onload = () => {
+            console.log('x_gun.png loaded successfully');
+        };
+        this.xGunImage.onerror = () => {
+            console.error('Failed to load x_gun.png');
+        };
+        this.xGunImage.src = 'x_gun.png';
+        this.showXGun = false;
+        this.xGunSlot = -1;
+        
+        
         this.init();
     }
     
@@ -53,6 +66,7 @@ class RouletteWheel {
         this.setupEventListeners();
         this.updateTextarea();
         this.updateColors();
+        this.drawWheel();
         this.startAnimation();
     }
     
@@ -104,6 +118,7 @@ class RouletteWheel {
     }
     
     startAnimation() {
+        
         const animate = () => {
             // 輪盤持續旋轉（無論是否在抽選中）
             this.currentRotation += this.wheelRotationSpeed;
@@ -256,16 +271,21 @@ class RouletteWheel {
         // 清除舊的 timeout（如果有的話）
         if (this.resultTimeoutId) {
             clearTimeout(this.resultTimeoutId);
-            console.log('Cleared old timeout');
+            this.resultTimeoutId = null;
         }
         
-        // 延遲顯示結果
-        console.log('Setting timeout for result display...');
-        this.resultTimeoutId = setTimeout(() => {
-            console.log('Timeout triggered, calling onSpinComplete');
-            this.onSpinComplete();
-            this.resultTimeoutId = null;
-        }, 800);
+        // 立即顯示結果
+        console.log('Showing x_gun immediately on slot', slotIndex);
+        this.showXGunOnSlot(slotIndex);
+        this.onSpinComplete();
+    }
+    
+    showXGunOnSlot(slotIndex) {
+        console.log('showXGunOnSlot called with slot:', slotIndex);
+        this.showXGun = true;
+        this.xGunSlot = slotIndex;
+        console.log('X_gun state set - showXGun:', this.showXGun, 'xGunSlot:', this.xGunSlot);
+        console.log('Image loaded?', this.xGunImage.complete);
     }
     
     checkSlotSideCollision() {
@@ -373,6 +393,8 @@ class RouletteWheel {
         
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // 清理測試代碼 - 移除基本測試圖形
+        
         // 先繪製整個軌道區域（深咖啡色背景）
         this.ctx.beginPath();
         this.ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
@@ -445,6 +467,8 @@ class RouletteWheel {
             // 移除格子內的凹槽效果
         }
         
+        // 移除重複的調試信息
+        
         // 繪製數字環（在格子上方）
         for (let i = 0; i < itemCount; i++) {
             const startAngle = i * anglePerItem - Math.PI / 2;
@@ -480,7 +504,53 @@ class RouletteWheel {
                 this.ctx.font = 'bold 16px Arial';  // 18 * 0.9
             }
             
+            // 先畫數字文字
             this.ctx.fillText(text, textRadius, 0);
+            
+            
+            // x_gun 圖片顯示
+            if (this.showXGun && this.xGunSlot === i) {
+                console.log('Drawing x_gun on slot', i);
+                const gunSize = 40; // 適中的尺寸
+                
+                // 檢查圖片是否載入完成
+                if (this.xGunImage.complete && this.xGunImage.width > 0) {
+                    console.log('Drawing x_gun image');
+                    // 設置透明度
+                    this.ctx.globalAlpha = 0.7; // 80% 不透明度
+                    
+                    // 保存當前狀態
+                    this.ctx.save();
+                    
+                    // 移動到圖片要放置的位置
+                    this.ctx.translate(textRadius, 0);
+                    
+                    // 順時針旋轉90度
+                    this.ctx.rotate(Math.PI / 2);
+                    
+                    // 在(0,0)位置繪製圖片（已經移動到正確位置）
+                    this.ctx.drawImage(
+                        this.xGunImage, 
+                        -gunSize/2,  // 水平置中
+                        -gunSize/2,  // 垂直置中
+                        gunSize, 
+                        gunSize
+                    );
+                    
+                    // 恢復狀態和透明度
+                    this.ctx.restore();
+                    this.ctx.globalAlpha = 1.0;
+                } else {
+                    console.log('Drawing fallback red square for x_gun');
+                    // 後備方案：紅色方框
+                    this.ctx.fillStyle = 'red';
+                    this.ctx.fillRect(textRadius - 15, -15, 30, 30);
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.fillText('X', textRadius, 0);
+                }
+            }
+            
             this.ctx.restore();
         }
         
@@ -614,6 +684,10 @@ class RouletteWheel {
         this.ball.finalSlot = -1;
         this.ball.relativeAngle = undefined;  // 清除相對角度
         
+        // 重置 x_gun 顯示狀態
+        this.showXGun = false;
+        this.xGunSlot = -1;
+        
         // 重置球的座標
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
@@ -627,8 +701,9 @@ class RouletteWheel {
         this.isSpinning = false;
         this.spinBtn.disabled = false;
         
+        // 不再顯示彈窗，只在控制台顯示結果
         if (this.ball.finalSlot >= 0 && this.ball.finalSlot < this.items.length) {
-            this.showResult(this.items[this.ball.finalSlot]);
+            console.log('抽中了：', this.items[this.ball.finalSlot]);
         }
         
         // 不再重置小球到外圈，讓球停留在落定位置跟著輪盤轉動
