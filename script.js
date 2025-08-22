@@ -52,6 +52,16 @@ class RouletteWheel {
         this.showXGun = false;
         this.xGunSlot = -1;
         
+        // bull_bone 圖片相關
+        this.bullBoneImage = new Image();
+        this.bullBoneImage.onload = () => {
+            console.log('bull_bone.png loaded successfully');
+        };
+        this.bullBoneImage.onerror = () => {
+            console.error('Failed to load bull_bone.png');
+        };
+        this.bullBoneImage.src = 'bull_bone.png';
+        
         
         this.init();
     }
@@ -602,8 +612,15 @@ class RouletteWheel {
             this.drawDiamond(centerX_diamond, centerY_diamond, diamondSize, isVertical, angle);
         }
         
-        // 繪製中心錐形（最後繪製，在最上層）
-        this.drawCone(centerX, centerY, coneRadius);
+        // 繪製中心錐形（在變換之前，不跟著旋轉）
+        this.drawConeBase(centerX, centerY, coneRadius);
+        
+        // 繪製會旋轉的中心圖片
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY);
+        this.ctx.rotate(this.currentRotation);
+        this.drawRotatingCenterImage(coneRadius);
+        this.ctx.restore();
     }
     
     drawDiamond(centerX, centerY, size, isVertical, angle = 0) {
@@ -645,7 +662,7 @@ class RouletteWheel {
         this.ctx.restore();
     }
     
-    drawCone(centerX, centerY, radius) {
+    drawConeBase(centerX, centerY, radius) {
         // 繪製錐形底座
         this.ctx.beginPath();
         this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
@@ -660,6 +677,21 @@ class RouletteWheel {
         this.ctx.strokeStyle = '#654321';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
+    }
+    
+    drawRotatingCenterImage(radius) {
+        // 繪製會旋轉的 bull_bone 圖片
+        if (this.bullBoneImage.complete && this.bullBoneImage.width > 0) {
+            // 圖片大小設為錐形半徑的60%
+            const imageSize = radius * 0.6 * 2; // 直徑
+            this.ctx.drawImage(
+                this.bullBoneImage,
+                -imageSize/2,  // 水平置中（因為已經translate到中心）
+                -imageSize/2,  // 垂直置中
+                imageSize,
+                imageSize
+            );
+        }
     }
     
     spin() {
