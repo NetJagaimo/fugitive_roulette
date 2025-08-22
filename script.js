@@ -37,6 +37,9 @@ class RouletteWheel {
             settling: false
         };
         
+        // 用於存儲 setTimeout 的 ID
+        this.resultTimeoutId = null;
+        
         this.init();
     }
     
@@ -110,8 +113,34 @@ class RouletteWheel {
             
             // 更新小球位置（根據不同狀態）
             if (this.isSpinning && !this.ball.settling) {
-                // 球還在掉落過程中
+                // 遊戲進行中且球還沒停下，繼續更新
                 this.updateBall();
+                
+                // 檢查球速度是否歸零（決定遊戲結束）
+                if (this.ball.speed === 0) {
+                    console.log('=== BALL SPEED REACHED ZERO ===');
+                    console.log('Ball state:', {
+                        speed: this.ball.speed,
+                        radius: this.ball.radius,
+                        angle: this.ball.angle,
+                        isDropping: this.ball.isDropping,
+                        settling: this.ball.settling,
+                        finalSlot: this.ball.finalSlot,
+                        x: this.ball.x,
+                        y: this.ball.y
+                    });
+                    console.log('Game state:', {
+                        isSpinning: this.isSpinning,
+                        currentRotation: this.currentRotation,
+                        itemsLength: this.items.length
+                    });
+                    
+                    this.ball.settling = true;
+                    this.ball.isDropping = false;
+                    
+                    console.log('Calling determineFinalSlot...');
+                    this.determineFinalSlot();
+                }
             } else if (this.ball.settling && this.ball.finalSlot >= 0) {
                 // 球已經停下，跟著輪盤轉動
                 this.updateBallWithWheel();
@@ -134,49 +163,44 @@ class RouletteWheel {
         // 減速
         this.ball.speed *= this.ball.friction;
         
-        // 當速度減慢到一定程度時，開始掉落
-        if (this.ball.speed < 0.02 && !this.ball.isDropping && !this.ball.settling) {
+        // 當速度減慢到一定程度時，開始掉落（使用絕對值判斷）
+        if (Math.abs(this.ball.speed) < 0.02 && !this.ball.isDropping && !this.ball.settling) {
             this.ball.isDropping = true;
             this.ball.dropSpeed = 0.2;
         }
         
         // 如果正在掉落
         if (this.ball.isDropping) {
-            // 加速掉落
-            this.ball.dropSpeed += 0.03;
-            this.ball.radius -= this.ball.dropSpeed;
-            
-            // 添加一些隨機彈跳（模擬球碰撞錐形和格子邊緣）
-            if (Math.random() < 0.15 && this.ball.radius > 150 && this.ball.radius < 240) {
-                this.ball.radius += Math.random() * 4;
-                this.ball.speed += (Math.random() - 0.5) * 0.02;
-                // 偶爾改變方向
-                if (Math.random() < 0.3) {
-                    this.ball.angle += (Math.random() - 0.5) * 0.1;
-                }
-            }
-            
-            // 簡單觸底檢測：當球掉到中心錐形區域時就停止
-            if (this.ball.radius <= 158 && !this.ball.settling) {
-                this.ball.isDropping = false;
-                this.ball.settling = true;
+            // 只有在還沒settling時才執行掉落邏輯
+            if (!this.ball.settling) {
+                // 加速掉落
+                this.ball.dropSpeed += 0.03;
+                this.ball.radius -= this.ball.dropSpeed;
                 
-                // 簡單設置最終位置
-                const itemCount = this.items.length;
-                if (itemCount > 0) {
-                    const anglePerItem = (2 * Math.PI) / itemCount;
-                    const relativeAngle = (this.ball.angle - this.currentRotation + 2 * Math.PI + Math.PI / 2) % (2 * Math.PI);
-                    const slotIndex = Math.floor(relativeAngle / anglePerItem) % itemCount;
-                    this.ball.finalSlot = slotIndex;
-                    this.ball.radius = 166.6; // 固定最終半徑
-                    this.ball.speed = 0;
-                    this.ball.relativeAngle = undefined;
-                    
-                    setTimeout(() => this.onSpinComplete(), 800);
-                } else {
-                    this.onSpinComplete();
+                // 檢查格子側邊碰撞（只在格子區域內）
+                if (this.ball.radius > 158 && this.ball.radius < 207) {
+                    this.checkSlotSideCollision();
                 }
-                return;
+                
+                // 觸底判斷：當球碰到錐形邊緣時停止掉落（考慮球的半徑）
+                const ballSize = 8.6;
+                const coneRadius = 158;
+                if (this.ball.radius <= coneRadius + ballSize) {
+                    this.ball.isDropping = false;
+                    this.ball.radius = 166.6; // 固定在錐形邊緣外側
+                    
+                    // 大幅降低速度，確保能停下來
+                    if (this.ball.speed > 0.01) {
+                        this.ball.speed *= 0.15; // 反彈後速度變為原來的15%
+                    } else {
+                        this.ball.speed = 0; // 如果速度很小，直接設為0
+                    }
+                    
+                    // 輕微改變方向，模擬彈跳效果
+                    this.ball.angle += (Math.random() - 0.5) * 0.03;
+                    
+                    // 但不設置 settling = true，等速度歸零時再設置
+                }
             }
         }
         
@@ -189,7 +213,96 @@ class RouletteWheel {
         }
     }
     
+    determineFinalSlot() {
+        console.log('=== DETERMINE FINAL SLOT CALLED ===');
+        
+        // 防止重複調用
+        if (this.ball.finalSlot >= 0) {
+            console.log('Already determined, finalSlot =', this.ball.finalSlot);
+            return;
+        }
+        
+        const itemCount = this.items.length;
+        if (itemCount === 0) {
+            console.log('No items, calling onSpinComplete');
+            this.onSpinComplete();
+            return;
+        }
+        
+        // 計算球在哪個格子
+        const anglePerItem = (2 * Math.PI) / itemCount;
+        let relativeAngle = (this.ball.angle - this.currentRotation + Math.PI / 2) % (2 * Math.PI);
+        
+        // 確保角度為正數
+        if (relativeAngle < 0) {
+            relativeAngle += 2 * Math.PI;
+        }
+        
+        const slotIndex = Math.floor(relativeAngle / anglePerItem) % itemCount;
+        
+        console.log('Calculation details:', {
+            anglePerItem: anglePerItem,
+            ballAngle: this.ball.angle,
+            currentRotation: this.currentRotation,
+            relativeAngle: relativeAngle,
+            slotIndex: slotIndex,
+            selectedItem: this.items[slotIndex]
+        });
+        
+        this.ball.finalSlot = slotIndex;
+        
+        console.log('Ball stopped at slot:', slotIndex, 'Item:', this.items[slotIndex]);
+        
+        // 清除舊的 timeout（如果有的話）
+        if (this.resultTimeoutId) {
+            clearTimeout(this.resultTimeoutId);
+            console.log('Cleared old timeout');
+        }
+        
+        // 延遲顯示結果
+        console.log('Setting timeout for result display...');
+        this.resultTimeoutId = setTimeout(() => {
+            console.log('Timeout triggered, calling onSpinComplete');
+            this.onSpinComplete();
+            this.resultTimeoutId = null;
+        }, 800);
+    }
     
+    checkSlotSideCollision() {
+        const itemCount = this.items.length;
+        if (itemCount === 0) return;
+        
+        const anglePerItem = (2 * Math.PI) / itemCount;
+        const ballSize = 8.6; // 球的半徑
+        
+        // 計算球相對於輪盤的角度
+        const relativeAngle = (this.ball.angle - this.currentRotation) % (2 * Math.PI);
+        const adjustedAngle = (relativeAngle + 2 * Math.PI + Math.PI / 2) % (2 * Math.PI);
+        
+        // 找到球所在的格子
+        const slotIndex = Math.floor(adjustedAngle / anglePerItem) % itemCount;
+        const slotStartAngle = slotIndex * anglePerItem;
+        
+        // 計算球在格子內的相對角度（0是格子中心）
+        const angleInSlot = adjustedAngle - slotStartAngle - (anglePerItem / 2);
+        
+        // 計算球邊緣佔據的角度範圍
+        const ballAngularSize = ballSize / this.ball.radius;
+        const maxAngleInSlot = (anglePerItem / 2) - ballAngularSize;
+        
+        // 如果球邊緣超出格子邊界
+        if (Math.abs(angleInSlot) > maxAngleInSlot) {
+            // 反彈：將球推回格子內
+            const newAngleInSlot = maxAngleInSlot * Math.sign(angleInSlot);
+            const newAdjustedAngle = slotStartAngle + (anglePerItem / 2) + newAngleInSlot;
+            const newRelativeAngle = newAdjustedAngle - Math.PI / 2;
+            this.ball.angle = (newRelativeAngle + this.currentRotation) % (2 * Math.PI);
+            
+            // 減少速度並稍微向外彈
+            this.ball.speed *= 0.7;
+            this.ball.radius += 1 + Math.random() * 2;
+        }
+    }
     
     drawBall() {
         this.ctx.save();
@@ -482,18 +595,30 @@ class RouletteWheel {
     spin() {
         if (this.isSpinning || this.items.length === 0) return;
         
+        // 清除可能存在的舊 timeout
+        if (this.resultTimeoutId) {
+            clearTimeout(this.resultTimeoutId);
+            this.resultTimeoutId = null;
+        }
+        
         this.isSpinning = true;
         this.spinBtn.disabled = true;
         
         // 重置小球狀態
         this.ball.angle = Math.random() * Math.PI * 2;
         this.ball.radius = this.getBallTrackRadius();  // 在外圍軌道上
-        this.ball.speed = 0.12 + Math.random() * 0.04; // 初始速度稍微快一點點
+        this.ball.speed = -(0.12 + Math.random() * 0.04); // 初始速度為負值，逆時針旋轉
         this.ball.dropSpeed = 0;
         this.ball.isDropping = false;
         this.ball.settling = false;
         this.ball.finalSlot = -1;
         this.ball.relativeAngle = undefined;  // 清除相對角度
+        
+        // 重置球的座標
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        this.ball.x = centerX + Math.cos(this.ball.angle) * this.ball.radius;
+        this.ball.y = centerY + Math.sin(this.ball.angle) * this.ball.radius;
         
         // 輪盤維持原本的基礎轉動速度，不改變
     }
