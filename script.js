@@ -517,7 +517,7 @@ class RouletteWheel {
                 if (this.xGunImage.complete && this.xGunImage.width > 0) {
                     console.log('Drawing x_gun image');
                     // 設置透明度
-                    this.ctx.globalAlpha = 0.7; // 80% 不透明度
+                    this.ctx.globalAlpha = 0.75; // 80% 不透明度
                     
                     // 保存當前狀態
                     this.ctx.save();
