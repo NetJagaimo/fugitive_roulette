@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>輪盤抽選遊戲</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>輪盤抽選遊戲</h1>
+        
+        <div class="game-container">
+            <div class="wheel-section">
+                <div class="wheel-container">
+                    <canvas id="wheel" width="700" height="700"></canvas>
+                    <div class="pointer"></div>
+                </div>
+                <div class="controls">
+                    <button id="spinBtn" class="spin-btn">開始旋轉</button>
+                </div>
+            </div>
+            
+            <div class="list-section">
+                <h2>項目列表</h2>
+                <div class="list-controls">
+                    <button id="shuffleBtn" class="btn">打亂順序</button>
+                </div>
+                <p class="list-hint">每行輸入一個項目：</p>
+                <textarea id="itemsTextarea" class="items-textarea" placeholder="0&#10;1&#10;2&#10;3&#10;4&#10;5&#10;...&#10;36"></textarea>
+            </div>
+        </div>
+        
+        <div id="resultModal" class="modal">
+            <div class="modal-content">
+                <h2>恭喜！</h2>
+                <p id="resultText"></p>
+                <button id="closeModal" class="btn">確定</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
