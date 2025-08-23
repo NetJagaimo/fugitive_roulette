@@ -65,6 +65,7 @@ class RouletteWheel {
         this.updateTextarea();
         this.updateColors();
         this.drawWheel();
+        this.updateSpinButtonState(); // 初始按鈕狀態
         this.startAnimation();
     }
     
@@ -73,9 +74,36 @@ class RouletteWheel {
         this.shuffleBtn.addEventListener('click', () => this.shuffleItems());
         this.closeModal.addEventListener('click', () => this.hideModal());
         
+        // 監聽多種事件確保按鈕狀態正確更新
         this.itemsTextarea.addEventListener('input', () => {
             this.updateItemsFromTextarea();
+            this.updateSpinButtonState();
         });
+        this.itemsTextarea.addEventListener('paste', () => {
+            // 延遲執行讓paste內容先更新到textarea
+            setTimeout(() => {
+                this.updateItemsFromTextarea();
+                this.updateSpinButtonState();
+            }, 10);
+        });
+        this.itemsTextarea.addEventListener('keyup', () => {
+            this.updateItemsFromTextarea();
+            this.updateSpinButtonState();
+        });
+    }
+    
+    updateSpinButtonState() {
+        // 根據項目數量和遊戲狀態更新按鈕disabled狀態
+        const shouldDisable = (this.items.length < 2 || this.isSpinning);
+        this.spinBtn.disabled = shouldDisable;
+        
+        if (shouldDisable) {
+            this.spinBtn.style.opacity = '0.5';
+            this.spinBtn.style.cursor = 'not-allowed';
+        } else {
+            this.spinBtn.style.opacity = '1';
+            this.spinBtn.style.cursor = 'pointer';
+        }
     }
     
     updateColors() {
@@ -385,7 +413,7 @@ class RouletteWheel {
             this.ctx.fillText('請輸入項目', centerX, centerY);
             
             // 繪製中心錐形
-            this.drawCone(centerX, centerY, coneRadius);
+            this.drawConeBase(centerX, centerY, coneRadius);
             return;
         }
         
@@ -643,7 +671,7 @@ class RouletteWheel {
     }
     
     spin() {
-        if (this.isSpinning || this.items.length === 0) return;
+        if (this.isSpinning || this.items.length < 2) return;
         
         // 清除可能存在的舊 timeout
         if (this.resultTimeoutId) {
@@ -652,7 +680,7 @@ class RouletteWheel {
         }
         
         this.isSpinning = true;
-        this.spinBtn.disabled = true;
+        this.updateSpinButtonState();
         
         // 重置小球狀態
         this.ball.angle = Math.random() * Math.PI * 2;
@@ -679,7 +707,7 @@ class RouletteWheel {
     
     onSpinComplete() {
         this.isSpinning = false;
-        this.spinBtn.disabled = false;
+        this.updateSpinButtonState();
         
         // 不再顯示彈窗，只在控制台顯示結果
         if (this.ball.finalSlot >= 0 && this.ball.finalSlot < this.items.length) {
