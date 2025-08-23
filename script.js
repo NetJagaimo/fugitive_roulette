@@ -42,24 +42,12 @@ class RouletteWheel {
         
         // x_gun 圖片相關
         this.xGunImage = new Image();
-        this.xGunImage.onload = () => {
-            console.log('x_gun.png loaded successfully');
-        };
-        this.xGunImage.onerror = () => {
-            console.error('Failed to load x_gun.png');
-        };
         this.xGunImage.src = 'x_gun.png';
         this.showXGun = false;
         this.xGunSlot = -1;
         
         // bull_bone 圖片相關
         this.bullBoneImage = new Image();
-        this.bullBoneImage.onload = () => {
-            console.log('bull_bone.png loaded successfully');
-        };
-        this.bullBoneImage.onerror = () => {
-            console.error('Failed to load bull_bone.png');
-        };
         this.bullBoneImage.src = 'bull_bone.png';
         
         
@@ -142,28 +130,10 @@ class RouletteWheel {
                 this.updateBall();
                 
                 // 檢查球速度是否歸零（決定遊戲結束）
-                if (this.ball.speed === 0) {
-                    console.log('=== BALL SPEED REACHED ZERO ===');
-                    console.log('Ball state:', {
-                        speed: this.ball.speed,
-                        radius: this.ball.radius,
-                        angle: this.ball.angle,
-                        isDropping: this.ball.isDropping,
-                        settling: this.ball.settling,
-                        finalSlot: this.ball.finalSlot,
-                        x: this.ball.x,
-                        y: this.ball.y
-                    });
-                    console.log('Game state:', {
-                        isSpinning: this.isSpinning,
-                        currentRotation: this.currentRotation,
-                        itemsLength: this.items.length
-                    });
-                    
+                if (this.ball.speed === 0) {                
                     this.ball.settling = true;
                     this.ball.isDropping = false;
-                    
-                    console.log('Calling determineFinalSlot...');
+
                     this.determineFinalSlot();
                 }
             } else if (this.ball.settling && this.ball.finalSlot >= 0) {
@@ -238,18 +208,14 @@ class RouletteWheel {
         }
     }
     
-    determineFinalSlot() {
-        console.log('=== DETERMINE FINAL SLOT CALLED ===');
-        
+    determineFinalSlot() {        
         // 防止重複調用
         if (this.ball.finalSlot >= 0) {
-            console.log('Already determined, finalSlot =', this.ball.finalSlot);
             return;
         }
         
         const itemCount = this.items.length;
         if (itemCount === 0) {
-            console.log('No items, calling onSpinComplete');
             this.onSpinComplete();
             return;
         }
@@ -265,18 +231,7 @@ class RouletteWheel {
         
         const slotIndex = Math.floor(relativeAngle / anglePerItem) % itemCount;
         
-        console.log('Calculation details:', {
-            anglePerItem: anglePerItem,
-            ballAngle: this.ball.angle,
-            currentRotation: this.currentRotation,
-            relativeAngle: relativeAngle,
-            slotIndex: slotIndex,
-            selectedItem: this.items[slotIndex]
-        });
-        
         this.ball.finalSlot = slotIndex;
-        
-        console.log('Ball stopped at slot:', slotIndex, 'Item:', this.items[slotIndex]);
         
         // 清除舊的 timeout（如果有的話）
         if (this.resultTimeoutId) {
@@ -285,17 +240,13 @@ class RouletteWheel {
         }
         
         // 立即顯示結果
-        console.log('Showing x_gun immediately on slot', slotIndex);
         this.showXGunOnSlot(slotIndex);
         this.onSpinComplete();
     }
     
     showXGunOnSlot(slotIndex) {
-        console.log('showXGunOnSlot called with slot:', slotIndex);
         this.showXGun = true;
         this.xGunSlot = slotIndex;
-        console.log('X_gun state set - showXGun:', this.showXGun, 'xGunSlot:', this.xGunSlot);
-        console.log('Image loaded?', this.xGunImage.complete);
     }
     
     checkSlotSideCollision() {
@@ -520,12 +471,10 @@ class RouletteWheel {
             
             // x_gun 圖片顯示
             if (this.showXGun && this.xGunSlot === i) {
-                console.log('Drawing x_gun on slot', i);
                 const gunSize = 40; // 適中的尺寸
                 
                 // 檢查圖片是否載入完成
                 if (this.xGunImage.complete && this.xGunImage.width > 0) {
-                    console.log('Drawing x_gun image');
                     // 設置透明度
                     this.ctx.globalAlpha = 0.75; // 80% 不透明度
                     
@@ -551,7 +500,6 @@ class RouletteWheel {
                     this.ctx.restore();
                     this.ctx.globalAlpha = 1.0;
                 } else {
-                    console.log('Drawing fallback red square for x_gun');
                     // 後備方案：紅色方框
                     this.ctx.fillStyle = 'red';
                     this.ctx.fillRect(textRadius - 15, -15, 30, 30);
